@@ -26,30 +26,30 @@ const UserSchema = new mongoose.Schema(
     },
     userType: {
       type: String,
-      enum: ['ngo', 'organization', 'donor'], // ngo, organization, or donor
+      enum: ['ngo', 'organization', 'donor'],
       required: true,
     },
     phone: {
       type: String,
       required: function() {
         return this.userType !== 'donor';
-      }, // Optional for donors, required for NGO/Org
+      },
     },
     organization: {
       type: String,
       required: function() {
         return this.userType !== 'donor';
-      }, // Name of NGO/Organization
+      },
     },
-    description: String, // About the NGO/Organization
-    logo: String, // URL of organization logo (Cloudinary/S3)
+    description: String,
+    logo: String,
     website: String,
     isVerified: {
       type: Boolean,
-      default: false, // NGO/Org needs verification
+      default: false,
     },
-    verificationDocs: [String], // URLs of verification documents
-    razorpayAccountId: String, // For NGO/Org: Razorpay Account ID
+    verificationDocs: [String],
+    razorpayAccountId: String,
     createdAt: {
       type: Date,
       default: Date.now,
@@ -58,22 +58,35 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Hash password before saving
-UserSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
+// Hash password BEFORE saving - IMPORTANT: use regular function, NOT arrow function
+UserSchema.pre('save', function(next) {
+  const user = this;
 
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
+  // If password is not modified, continue
+  if (!user.isModified('password')) {
+    return next();
   }
+
+  // Generate salt and hash password
+  bcrypt.genSalt(10, function(err, salt) {
+    if (err) {
+      return next(err);
+    }
+
+    bcrypt.hash(user.password, salt, function(err, hash) {
+      if (err) {
+        return next(err);
+      }
+
+      user.password = hash;
+      next();
+    });
+  });
 });
 
 // Method to compare password
-UserSchema.methods.matchPassword = async function(enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+UserSchema.methods.matchPassword = function(enteredPassword) {
+  return bcrypt.compare(enteredPassword, this.password);
 };
 
 module.exports = mongoose.model('User', UserSchema);
