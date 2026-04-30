@@ -22,7 +22,7 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide a password'],
       minlength: 6,
-      select: false, // Don't return password by default
+      select: false,
     },
     userType: {
       type: String,
@@ -58,7 +58,7 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Hash password BEFORE saving - IMPORTANT: use regular function, NOT arrow function
+// ✅ Hash password BEFORE saving
 UserSchema.pre('save', function(next) {
   const user = this;
 
@@ -67,24 +67,28 @@ UserSchema.pre('save', function(next) {
     return next();
   }
 
-  // Generate salt and hash password
-  bcrypt.genSalt(10, function(err, salt) {
+  // Generate salt
+  bcrypt.genSalt(10, (err, salt) => {
     if (err) {
+      console.error('❌ Salt generation error:', err);
       return next(err);
     }
 
-    bcrypt.hash(user.password, salt, function(err, hash) {
+    // Hash password
+    bcrypt.hash(user.password, salt, (err, hash) => {
       if (err) {
+        console.error('❌ Hash error:', err);
         return next(err);
       }
 
       user.password = hash;
+      console.log('✅ Password hashed successfully');
       next();
     });
   });
 });
 
-// Method to compare password
+// ✅ Method to compare password
 UserSchema.methods.matchPassword = function(enteredPassword) {
   return bcrypt.compare(enteredPassword, this.password);
 };
